@@ -1,4 +1,6 @@
-//original file
+//zebra configured file
+
+
 
 'use client'
 
@@ -28,9 +30,9 @@ export default function ZebraGateScanner() {
   const [processing, setProcessing] = useState(false)
   const [scanValue, setScanValue] = useState('')
 
-  // ==========================
+  // ======================
   // Live Count
-  // ==========================
+  // ======================
   const { data, mutate } = useSWR(
     activeDay
       ? `${process.env.NEXT_PUBLIC_API_URL}${DAY_API[activeDay]}`
@@ -40,33 +42,42 @@ export default function ZebraGateScanner() {
 
   const count = data?.count ?? 0
 
-  // ==========================
-  // Always Focus Scanner Input
-  // ==========================
+  // ======================
+  // Keep Input Focused
+  // ======================
   useEffect(() => {
     const interval = setInterval(() => {
       inputRef.current?.focus()
-    }, 300)
+    }, 200)
 
     return () => clearInterval(interval)
   }, [])
 
-  // ==========================
-  // Flash Reset
-  // ==========================
-  const triggerStatus = (type: ScanStatus) => {
+  // ======================
+  // Reset on Day Change
+  // ======================
+  useEffect(() => {
+    setScanValue('')
+    setStatus(null)
+  }, [activeDay])
+
+  // ======================
+  // Flash Effect
+  // ======================
+  const triggerFlash = (type: ScanStatus) => {
     setStatus(type)
 
     setTimeout(() => {
       setStatus(null)
-    }, 1000)
+    }, 800)
   }
 
-  // ==========================
+  // ======================
   // API Call
-  // ==========================
+  // ======================
   const markAttendance = async (regNum: string) => {
     if (!activeDay || processing) return
+
     setProcessing(true)
 
     try {
@@ -79,100 +90,96 @@ export default function ZebraGateScanner() {
         },
       )
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message)
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.message)
 
-      triggerStatus('success')
+      triggerFlash('success')
       mutate()
     } catch {
-      triggerStatus('error')
+      triggerFlash('error')
     } finally {
       setProcessing(false)
     }
   }
 
-  // ==========================
-  // Zebra Input Handler
-  // ==========================
+  // ======================
+  // Zebra Handler
+  // ======================
   const handleScan = async (
     e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (e.key === 'Enter' && scanValue.trim()) {
+    if (e.key === 'Enter') {
       const value = scanValue.trim()
+
+      if (!value) return
+
       setScanValue('')
       await markAttendance(value)
     }
   }
 
-  // ==========================
-  // UI
-  // ==========================
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-center transition-colors duration-75
+      className={`min-h-screen flex flex-col items-center justify-center px-6 transition-colors duration-75
       ${status === 'success' ? 'bg-green-600' : ''}
       ${status === 'error' ? 'bg-red-600' : ''}
     `}
     >
-      {/* Hidden Zebra Input */}
+      {/* Hidden Scanner Input */}
       <input
         ref={inputRef}
         value={scanValue}
         onChange={(e) => setScanValue(e.target.value)}
         onKeyDown={handleScan}
         autoFocus
+        inputMode="none"
         className="absolute opacity-0 pointer-events-none"
       />
 
       {/* Day Selection */}
-      {!activeDay && (
-        <div className="space-y-6 text-center">
-          <h1 className="text-2xl font-bold">Select Scan Day</h1>
-          <div className="flex gap-4 justify-center">
-            {(['day1', 'day2', 'day3'] as ScanDay[]).map((day) => (
-              <Button
-                key={day}
-                size="lg"
-                onClick={() => setActiveDay(day)}
-              >
-                {day.toUpperCase()}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flex gap-4 mb-10">
+        {(['day1', 'day2', 'day3'] as ScanDay[]).map((day) => (
+          <Button
+            key={day}
+            size="lg"
+            variant={activeDay === day ? 'default' : 'outline'}
+            onClick={() => setActiveDay(day)}
+            className="relative px-8"
+          >
+            {day.toUpperCase()}
 
-      {/* Scanner Screen */}
+            {activeDay === day && (
+              <Badge
+                variant="secondary"
+                className="absolute -top-3 -right-3"
+              >
+                {count}
+              </Badge>
+            )}
+          </Button>
+        ))}
+      </div>
+
+      {/* Scanner Display */}
       {activeDay && (
         <div className="text-center space-y-6">
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-4xl font-bold tracking-wide">
             {activeDay.toUpperCase()} SCANNING
           </h1>
 
-          <Badge variant="secondary" className="text-lg px-4 py-2">
-            Total Scanned: {count}
-          </Badge>
-
-          {/* Feedback Icon */}
           {status === 'success' && (
-            <CheckCircle2 size={120} className="text-white mx-auto" />
+            <CheckCircle2 size={140} className="text-white mx-auto" />
           )}
 
           {status === 'error' && (
-            <XCircle size={120} className="text-white mx-auto" />
+            <XCircle size={140} className="text-white mx-auto" />
           )}
-
-          <Button
-            variant="outline"
-            onClick={() => setActiveDay(null)}
-          >
-            Change Day
-          </Button>
         </div>
       )}
     </div>
   )
 }
+
 
 
 // old code with mobile camera scanner 
