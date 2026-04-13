@@ -76,13 +76,13 @@ function TermsContent({ router }: { router: ReturnType<typeof useRouter> }) {
     <div className="space-y-6">
 
       <h1 className="text-2xl font-semibold text-gray-900">
-        South India EV Event 2026 <br />
+        6th Edition of Times Property Expo <br />
         Registration – Terms & Conditions
       </h1>
 
       <p className="text-sm text-gray-600">
-        By registering for the South India EV Event 2026, an EV initiative by
-        Times of India, you agree to the following Terms & Conditions. Please
+        By registering for the 6th Edition of Times Property Expo, an initiative by
+        The Times of India, you agree to the following Terms & Conditions. Please
         review them carefully before proceeding with your registration.
       </p>
 
@@ -179,7 +179,7 @@ function TermsContent({ router }: { router: ReturnType<typeof useRouter> }) {
               </AlertDialogTitle>
               <AlertDialogDescription>
                 By confirming, you acknowledge that you have read and agree to
-                the South India EV Event 2026 Registration Terms & Conditions.
+                the 6th Edition of Times Property Expo Registration Terms & Conditions.
               </AlertDialogDescription>
             </AlertDialogHeader>
 

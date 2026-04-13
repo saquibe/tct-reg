@@ -163,9 +163,9 @@ export default function EVreadyRegistrationPage() {
     <div className="flex min-h-svh flex-col bg-gradient-to-b from-green-50 to-green-100">
 
       {/* Banner */}
-      <div className="relative w-full h-[180px] md:h-[220px] overflow-hidden">
+      <div className="relative w-full h-[180px] md:h-[420px] overflow-hidden">
         <Image
-          src="/banner.png"
+          src="/2.png"
           loading="eager"
           alt="EV Event"
           fill
@@ -183,10 +183,10 @@ export default function EVreadyRegistrationPage() {
                 {/* 🔥 TOP HEADER */}
                 <div className="text-center space-y-1 border-b pb-4">
                   <h1 className="text-xl font-bold text-green-800">
-                    South India Event 2026
+                    6th Edition of Times Property Expo
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    An EV Initiative by Times of India
+                    An EV Initiative by The Times of India
                   </p>
                   <p className="text-sm font-semibold text-green-700 mt-2">
                     Registration Form
@@ -283,10 +283,9 @@ export default function EVreadyRegistrationPage() {
                       >
                         <SelectTrigger className='w-full p-3'><SelectValue placeholder="Select visiting day" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="day1">Monday, 21 April 2026</SelectItem>
-                          <SelectItem value="day2">Tuesday, 22 April 2026</SelectItem>
-                          <SelectItem value="day3">Wednesday, 23 April 2026</SelectItem>
-                          <SelectItem value="all">All Days (21–23 April 2026)</SelectItem>
+                          <SelectItem value="day1">Saturday, 18 April 2026</SelectItem>
+                          <SelectItem value="day2">Sunday, 19 April 2026</SelectItem>
+                          <SelectItem value="all">Both Day (18–19 April 2026)</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -323,7 +322,7 @@ export default function EVreadyRegistrationPage() {
                 </h2>
 
                 <p className="mt-2 text-gray-600 text-sm">
-                  Your pass for <span className="font-semibold">South India EV Event 2026</span> is confirmed.
+                  Your pass for <span className="font-semibold">6th Edition of Times Property Expo 2026</span> is confirmed.
                 </p>
 
                 {regNum && (
@@ -343,10 +342,10 @@ export default function EVreadyRegistrationPage() {
                       {/* Header */}
                       <div className="bg-gradient-to-r from-green-700 to-green-600 text-white py-3 text-center">
                         <p className="text-sm font-semibold">
-                          South India EV Event 2026
+                          6th Edition of Times Property Expo
                         </p>
                         <p className="text-xs opacity-80">
-                          Times of India Initiative
+                          The Times of India Initiative
                         </p>
                       </div>
 
