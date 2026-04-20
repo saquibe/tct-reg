@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Send SMS
     try {
-      const safeQrLink = `tct-reg.vercel.app/badge/${regCode}`;
+      const safeQrLink = `${process.env.NEXT_PUBLIC_APP_URL}/badge/${regCode}`;
       await sendRegisterSMS({
         mobile: registration.mobile,
         name: registration.name,
