@@ -18,7 +18,7 @@ export async function sendRegisterSMS({
   try {
     const cleanName = name.replace(/^(Mr|Mrs|Ms|Dr|Er)\.\s*/i, "").trim();
     // IMPORTANT: Use EXACT event name that matches your template
-    const eventName = "6th Edition of Times Property Expo";
+    const eventName = "TCT Registration Confirmation";
     const message = `Dear ${cleanName}, registration id for ${eventName} is ${regNum} and QR Links is ${safeQrLink} Do not share this info to anyone for security reasons. - SaaScraft Studio`;
 
     const payload = {
@@ -123,7 +123,7 @@ export async function sendEmail(
         },
       ],
       subject: subject,
-      template_key: templateAlias, // Use template_key instead of template_alias
+      template_key: templateAlias,
       merge_info: {
         name: userName,
         product_name: "TCT Events",
