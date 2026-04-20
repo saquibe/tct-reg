@@ -8,23 +8,31 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get("authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized - No token" },
+        { status: 401 },
+      );
     }
 
+    // Verify JWT token
+    let decoded;
     try {
-      jwt.verify(token, process.env.JWT_SECRET!);
-    } catch {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     await connectToDatabase();
     const registrations = await Registration.find().sort({ createdAt: -1 });
-
     return NextResponse.json(registrations);
-  } catch (error) {
-    console.error("Error fetching registrations:", error);
+  } catch (error: any) {
+    console.error("❌ Error fetching registrations:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
       { status: 500 },
     );
   }

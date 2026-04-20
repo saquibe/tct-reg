@@ -87,13 +87,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>Email *</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   {...register("email")}
                   type="email"
-                  placeholder="admin@tct.com"
+                  placeholder="you@example.com"
                   className="pl-10"
                 />
               </div>
@@ -103,13 +103,13 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Password</Label>
+              <Label>Password *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   {...register("password")}
                   type="password"
-                  placeholder="••••••"
+                  placeholder="Enter your password"
                   className="pl-10"
                 />
               </div>
@@ -130,7 +130,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="text-center text-xs text-gray-400 space-y-2">
+          {/* <div className="text-center text-xs text-gray-400 space-y-2">
             <p>Demo Credentials: admin@tct.com / admin123</p>
             <button
               onClick={seedUsers}
@@ -138,7 +138,7 @@ export default function LoginPage() {
             >
               🚀 Create 15 Demo Users
             </button>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>

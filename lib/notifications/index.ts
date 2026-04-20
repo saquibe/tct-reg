@@ -1,109 +1,165 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 
-// SMS Gateway
-// lib/notifications/index.ts - Correct SMSGatewayHub format
-export async function sendSMS(mobile: string, message: string) {
+// ============================================
+// SMS - EXACT MATCH with working code
+// ============================================
+
+export async function sendRegisterSMS({
+  mobile,
+  name,
+  regNum,
+  safeQrLink,
+}: {
+  mobile: string;
+  name: string;
+  regNum: string;
+  safeQrLink: string;
+}) {
   try {
-    // Remove any spaces from mobile number
-    const cleanMobile = mobile.replace(/\s/g, "");
+    const cleanName = name.replace(/^(Mr|Mrs|Ms|Dr|Er)\.\s*/i, "").trim();
+    // IMPORTANT: Use EXACT event name that matches your template
+    const eventName = "6th Edition of Times Property Expo";
+    const message = `Dear ${cleanName}, registration id for ${eventName} is ${regNum} and QR Links is ${safeQrLink} Do not share this info to anyone for security reasons. - SaaScraft Studio`;
 
-    // SMSGatewayHub expects these exact parameter names
-    const params = new URLSearchParams({
-      APIKey: process.env.SMS_GATEWAY_API_KEY!,
-      SenderID: process.env.SMS_GATEWAY_SENDER_ID!,
-      EntityID: process.env.SMS_GATEWAY_ENTITY_ID!,
-      Route: process.env.SMS_GATEWAY_ROUTE!,
-      TemplateID: process.env.SMS_GATEWAY_REGISTER_TEMPLATE_ID!,
-      MobileNo: cleanMobile,
-      Message: message,
+    const payload = {
+      APIKey: process.env.SMS_GATEWAY_API_KEY,
+      senderid: process.env.SMS_GATEWAY_SENDER_ID,
+      channel: "2",
+      DCS: "0",
+      flashsms: "0",
+      number: mobile,
+      text: message,
+      route: process.env.SMS_GATEWAY_ROUTE,
+      EntityId: process.env.SMS_GATEWAY_ENTITY_ID,
+      dlttemplateid: process.env.SMS_GATEWAY_REGISTER_TEMPLATE_ID,
+    };
+
+    const response = await axios.get(process.env.SMS_GATEWAY_URL!, {
+      params: {
+        APIKey: process.env.SMS_GATEWAY_API_KEY,
+        senderid: process.env.SMS_GATEWAY_SENDER_ID,
+        channel: "2",
+        DCS: "0",
+        flashsms: "0",
+        number: mobile,
+        text: message,
+        route: process.env.SMS_GATEWAY_ROUTE,
+        EntityId: process.env.SMS_GATEWAY_ENTITY_ID,
+        dlttemplateid: process.env.SMS_GATEWAY_REGISTER_TEMPLATE_ID,
+      },
     });
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ SMS ERROR:", error.response?.data || error.message);
+    throw error;
+  }
+}
 
-    console.log("SMS Request URL:", `${process.env.SMS_GATEWAY_URL}?${params}`);
+// Keep the original sendSMS for backward compatibility
+export async function sendSMS(
+  mobile: string,
+  name: string,
+  regCode: string,
+  badgeUrl: string,
+) {
+  return sendRegisterSMS({
+    mobile,
+    name,
+    regNum: regCode,
+    safeQrLink: badgeUrl,
+  });
+}
 
-    const response = await fetch(`${process.env.SMS_GATEWAY_URL}?${params}`, {
-      method: "GET", // Their API might expect GET instead of POST
-    });
+// ============================================
+// EMAIL - Using ZeptoMail API
+// ============================================
 
-    const data = await response.json();
-    console.log("SMS Response:", data);
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  name?: string,
+) {
+  try {
+    const apiKey = process.env.ZEPTOMAIL_API_KEY;
+    const fromAddress = process.env.ZEPTOMAIL_FROM_ADDRESS;
+    const agentAlias = process.env.ZEPTOMAIL_AGENT_ALIAS;
+    const templateAlias = process.env.ZEPTOMAIL_TEMPLATE_ALIAS;
 
-    // Check if SMS was sent successfully
-    if (data.Message === "Success" || data.ErrorCode === "000") {
-      console.log("✅ SMS sent successfully");
-    } else {
-      console.log("❌ SMS failed:", data.Message);
+    if (!apiKey) {
+      console.error("❌ ZeptoMail API key not configured");
+      return null;
     }
 
-    return data;
-  } catch (error) {
-    console.error("SMS error:", error);
+    if (!fromAddress) {
+      console.error("❌ ZeptoMail from address not configured");
+      return null;
+    }
+
+    // Extract data for template variables
+    const nameMatch = html.match(/Dear <strong>(.*?)<\/strong>/);
+    const userName = nameMatch ? nameMatch[1] : name || "Valued Customer";
+
+    const badgeUrlMatch = html.match(/href="([^"]*)"/);
+    const badgeUrl = badgeUrlMatch ? badgeUrlMatch[1] : "";
+
+    const regCodeMatch = badgeUrl.match(/\/badge\/(.+)$/);
+    const regCode = regCodeMatch ? regCodeMatch[1] : "";
+
+    // Use the correct endpoint with agent alias
+    const url = `https://${process.env.ZEPTOMAIL_HOST}/v1.1/email/template`;
+
+    const payload = {
+      from: {
+        address: fromAddress,
+        name: process.env.ZEPTOMAIL_FROM_NAME || "TCT Events",
+      },
+      to: [
+        {
+          email_address: {
+            address: to,
+            name: userName,
+          },
+        },
+      ],
+      subject: subject,
+      template_key: templateAlias, // Use template_key instead of template_alias
+      merge_info: {
+        name: userName,
+        product_name: "TCT Events",
+        team: "TCT Events Team",
+        regCode: regCode,
+        badgeUrl: badgeUrl,
+        OTP: regCode,
+      },
+    };
+
+    const response = await axios.post(url, payload, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Zoho-enczapikey ${apiKey}`,
+      },
+      timeout: 30000,
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Email error:");
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Data:", error.response.data);
+    } else {
+      console.error("Message:", error.message);
+    }
     return null;
   }
 }
 
-// Email - Temporarily disabled
-// const transporter = nodemailer.createTransport({
-//   host: process.env.SMTP_HOST,
-//   port: parseInt(process.env.SMTP_PORT || "587"),
-//   secure: false,
-//   auth: {
-//     user: process.env.SMTP_USER,
-//     pass: process.env.SMTP_PASS,
-//   },
-// });
+// ============================================
+// WHATSAPP - Disabled
+// ============================================
 
-export async function sendEmail(to: string, subject: string, html: string) {
-  console.log("📧 Email service is temporarily disabled");
-  console.log(`Would send email to: ${to}`);
-  console.log(`Subject: ${subject}`);
-  // Uncomment when email credentials are ready
-  // try {
-  //   await transporter.sendMail({
-  //     from: process.env.SMTP_USER,
-  //     to,
-  //     subject,
-  //     html,
-  //   });
-  //   console.log("Email sent to:", to);
-  // } catch (error) {
-  //   console.error("Email error:", error);
-  //   throw error;
-  // }
-  return null;
-}
-
-// WhatsApp - Temporarily disabled
 export async function sendWhatsApp(to: string, message: string) {
-  console.log("📱 WhatsApp service is temporarily disabled");
-  console.log(`Would send WhatsApp to: ${to}`);
-  console.log(`Message: ${message}`);
-  // Uncomment when WhatsApp credentials are ready
-  // try {
-  //   // Format phone number for WhatsApp API
-  //   const whatsappNumber = to.startsWith("+") ? to : `+91${to}`;
-  //
-  //   const response = await fetch(process.env.WHATSAPP_API_URL!, {
-  //     method: "POST",
-  //     headers: {
-  //       Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({
-  //       messaging_product: "whatsapp",
-  //       recipient_type: "individual",
-  //       to: whatsappNumber,
-  //       type: "text",
-  //       text: { body: message },
-  //     }),
-  //   });
-  //
-  //   const data = await response.json();
-  //   console.log("WhatsApp sent:", data);
-  //   return data;
-  // } catch (error) {
-  //   console.error("WhatsApp error:", error);
-  //   // Don't throw - WhatsApp might not be configured
-  //   return null;
-  // }
+  // console.log("📱 WhatsApp service is temporarily disabled");
   return null;
 }

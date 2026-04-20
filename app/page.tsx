@@ -16,6 +16,9 @@ import {
   LogOut,
   LayoutDashboard,
   ClipboardList,
+  AlertCircle,
+  Check,
+  XCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,14 +45,114 @@ export default function HomePage() {
   const [regCode, setRegCode] = useState<string | null>(null);
   const [badgeUrl, setBadgeUrl] = useState<string | null>(null);
 
+  // Real-time validation states
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
+  const [checkingMobile, setCheckingMobile] = useState(false);
+  const [mobileExists, setMobileExists] = useState(false);
+  const [mobileMessage, setMobileMessage] = useState("");
+
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<RegistrationForm>({
     resolver: zodResolver(registrationSchema),
   });
+
+  const watchedEmail = watch("email");
+  const watchedMobile = watch("mobile");
+
+  // Check if email already exists (debounced)
+  useEffect(() => {
+    if (!watchedEmail || watchedEmail.length < 5) {
+      setEmailExists(false);
+      setEmailMessage("");
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      checkEmailExists(watchedEmail);
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [watchedEmail]);
+
+  // Check if mobile already exists (debounced)
+  useEffect(() => {
+    if (!watchedMobile || watchedMobile.length < 10) {
+      setMobileExists(false);
+      setMobileMessage("");
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      checkMobileExists(watchedMobile);
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [watchedMobile]);
+
+  const checkEmailExists = async (email: string) => {
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return;
+
+    setCheckingEmail(true);
+    try {
+      const response = await fetch(
+        `/api/check-registration?email=${encodeURIComponent(email)}`,
+      );
+      const data = await response.json();
+
+      if (data.exists) {
+        setEmailExists(true);
+        setEmailMessage(`This email is already registered`);
+        setError("email", {
+          type: "manual",
+          message: `This email is already registered`,
+        });
+      } else {
+        setEmailExists(false);
+        setEmailMessage("");
+        clearErrors("email");
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
+  const checkMobileExists = async (mobile: string) => {
+    if (mobile.length !== 10) return;
+
+    setCheckingMobile(true);
+    try {
+      const response = await fetch(`/api/check-registration?mobile=${mobile}`);
+      const data = await response.json();
+
+      if (data.exists) {
+        setMobileExists(true);
+        setMobileMessage(`This mobile number is already registered`);
+        setError("mobile", {
+          type: "manual",
+          message: `This mobile number is already registered`,
+        });
+      } else {
+        setMobileExists(false);
+        setMobileMessage("");
+        clearErrors("mobile");
+      }
+    } catch (error) {
+      console.error("Error checking mobile:", error);
+    } finally {
+      setCheckingMobile(false);
+    }
+  };
 
   // Check authentication on mount
   useEffect(() => {
@@ -72,6 +175,12 @@ export default function HomePage() {
   };
 
   const onSubmit = async (data: RegistrationForm) => {
+    // Double check if email or mobile exists before submitting
+    if (emailExists || mobileExists) {
+      toast.error("Email or mobile number is already registered");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await fetch("/api/register", {
@@ -82,15 +191,31 @@ export default function HomePage() {
 
       const result = await response.json();
 
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) {
+        if (response.status === 409) {
+          if (result.existingRegCode) {
+            toast.error(
+              `${result.error}. Your existing registration ID is: ${result.existingRegCode}`,
+            );
+          } else {
+            toast.error(result.error);
+          }
+        } else {
+          throw new Error(result.error);
+        }
+        return;
+      }
 
       setRegCode(result.regCode);
       setBadgeUrl(result.badgeUrl);
       setSuccess(true);
-      toast.success(
-        "Registration successful! Check your SMS, Email, and WhatsApp.",
-      );
+      toast.success("Registration successful! Check your SMS and Email.");
       reset();
+      // Reset validation states
+      setEmailExists(false);
+      setMobileExists(false);
+      setEmailMessage("");
+      setMobileMessage("");
     } catch (error: any) {
       toast.error(error.message || "Registration failed");
     } finally {
@@ -102,6 +227,11 @@ export default function HomePage() {
     setSuccess(false);
     setRegCode(null);
     setBadgeUrl(null);
+    reset();
+    setEmailExists(false);
+    setMobileExists(false);
+    setEmailMessage("");
+    setMobileMessage("");
   };
 
   // Show loading while checking auth
@@ -112,6 +242,19 @@ export default function HomePage() {
       </div>
     );
   }
+
+  // Check if form is valid and no duplicates
+  const isFormValid =
+    !emailExists &&
+    !mobileExists &&
+    !errors.name &&
+    !errors.email &&
+    !errors.city &&
+    !errors.mobile &&
+    watchedEmail &&
+    watchedMobile &&
+    watchedEmail.length > 0 &&
+    watchedMobile.length === 10;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -180,7 +323,8 @@ export default function HomePage() {
                       />
                     </div>
                     {errors.name && (
-                      <p className="text-red-500 text-sm">
+                      <p className="text-red-500 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
                         {errors.name.message}
                       </p>
                     )}
@@ -194,12 +338,33 @@ export default function HomePage() {
                         {...register("email")}
                         type="email"
                         placeholder="your@email.com"
-                        className="pl-10"
+                        className={`pl-10 pr-10 ${emailExists ? "border-red-500" : emailExists === false && watchedEmail ? "border-green-500" : ""}`}
                       />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {checkingEmail && (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        )}
+                        {!checkingEmail && emailExists && (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        {!checkingEmail &&
+                          !emailExists &&
+                          watchedEmail &&
+                          watchedEmail.length > 5 && (
+                            <Check className="w-4 h-4 text-green-500" />
+                          )}
+                      </div>
                     </div>
                     {errors.email && (
-                      <p className="text-red-500 text-sm">
+                      <p className="text-red-500 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
                         {errors.email.message}
+                      </p>
+                    )}
+                    {emailMessage && !errors.email && (
+                      <p className="text-amber-600 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {emailMessage}
                       </p>
                     )}
                   </div>
@@ -215,7 +380,8 @@ export default function HomePage() {
                       />
                     </div>
                     {errors.city && (
-                      <p className="text-red-500 text-sm">
+                      <p className="text-red-500 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
                         {errors.city.message}
                       </p>
                     )}
@@ -228,21 +394,41 @@ export default function HomePage() {
                       <Input
                         {...register("mobile")}
                         placeholder="10-digit mobile number"
-                        className="pl-10"
+                        className={`pl-10 pr-10 ${mobileExists ? "border-red-500" : mobileExists === false && watchedMobile?.length === 10 ? "border-green-500" : ""}`}
                         maxLength={10}
                       />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {checkingMobile && (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        )}
+                        {!checkingMobile && mobileExists && (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        {!checkingMobile &&
+                          !mobileExists &&
+                          watchedMobile?.length === 10 && (
+                            <Check className="w-4 h-4 text-green-500" />
+                          )}
+                      </div>
                     </div>
                     {errors.mobile && (
-                      <p className="text-red-500 text-sm">
+                      <p className="text-red-500 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
                         {errors.mobile.message}
+                      </p>
+                    )}
+                    {mobileMessage && !errors.mobile && (
+                      <p className="text-amber-600 text-sm flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {mobileMessage}
                       </p>
                     )}
                   </div>
 
                   <Button
                     type="submit"
-                    disabled={submitting}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700"
+                    disabled={submitting || !isFormValid}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -267,8 +453,8 @@ export default function HomePage() {
                   <strong className="text-indigo-600">{regCode}</strong>
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  We've sent your badge link via SMS, Email, and WhatsApp. Click
-                  the link to view and download your badge.
+                  We've sent your badge link via SMS and Email. Click the link
+                  to view and download your badge.
                 </p>
 
                 {badgeUrl && (
